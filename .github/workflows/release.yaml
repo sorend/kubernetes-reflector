@@ -9,7 +9,23 @@ env:
   IMAGE: ghcr.io/sorend/kubernetes-reflector
 
 jobs:
+  verify-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure tag is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor ${{ github.sha }} origin/main; then
+            echo "Tag ${{ github.ref_name }} is not on main branch" >&2
+            exit 1
+          fi
+
   test:
+    needs: verify-branch
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
