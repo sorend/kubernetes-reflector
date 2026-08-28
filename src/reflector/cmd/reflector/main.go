@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emberstack/kubernetes-reflector/internal/config"
-	"github.com/emberstack/kubernetes-reflector/internal/mirror"
+	"github.com/sorend/kubernetes-reflector/internal/config"
+	"github.com/sorend/kubernetes-reflector/internal/mirror"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -21,9 +21,9 @@ func main() {
 
 	level := zapcore.InfoLevel
 	switch strings.ToLower(cfg.LogLevel) {
-	case "debug", "verbose":
+	case "debug":
 		level = zapcore.DebugLevel
-	case "warning", "warn":
+	case "warn":
 		level = zapcore.WarnLevel
 	case "error":
 		level = zapcore.ErrorLevel

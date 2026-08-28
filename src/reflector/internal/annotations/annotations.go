@@ -1,6 +1,6 @@
 package annotations
 
-const Prefix = "reflector.v1.k8s.emberstack.com"
+const Prefix = "reflector.v2.sorend.github.com"
 
 const (
 	ReflectionAllowed           = Prefix + "/reflection-allowed"

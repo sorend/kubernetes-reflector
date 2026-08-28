@@ -1,4 +1,4 @@
-module github.com/emberstack/kubernetes-reflector
+module github.com/sorend/kubernetes-reflector
 
 go 1.24
 

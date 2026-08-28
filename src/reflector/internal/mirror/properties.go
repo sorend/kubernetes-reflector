@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emberstack/kubernetes-reflector/internal/annotations"
+	"github.com/sorend/kubernetes-reflector/internal/annotations"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )

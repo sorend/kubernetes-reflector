@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	envWatcherTimeout     = "ES_Reflector__Watcher__Timeout"
-	envExcludedNamespaces = "ES_Reflector__Watcher__ExcludedNamespaces"
-	envSkipTLSVerify      = "ES_Ignite__KubernetesClient__SkipTlsVerify"
-	envLogLevel           = "ES_Serilog__MinimumLevel__Default"
+	envWatcherTimeout     = "REFLECTOR_WATCHER_TIMEOUT"
+	envExcludedNamespaces = "REFLECTOR_EXCLUDED_NAMESPACES"
+	envSkipTLSVerify      = "REFLECTOR_SKIP_TLS_VERIFY"
+	envLogLevel           = "REFLECTOR_LOG_LEVEL"
 )
 
 type Config struct {
@@ -24,7 +24,7 @@ func Load() Config {
 		WatcherTimeout:     3600,
 		ExcludedNamespaces: "",
 		SkipTLSVerify:      false,
-		LogLevel:           "Information",
+		LogLevel:           "info",
 	}
 
 	if value := os.Getenv(envWatcherTimeout); value != "" {

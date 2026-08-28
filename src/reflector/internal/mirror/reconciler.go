@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/emberstack/kubernetes-reflector/internal/config"
+	"github.com/sorend/kubernetes-reflector/internal/config"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

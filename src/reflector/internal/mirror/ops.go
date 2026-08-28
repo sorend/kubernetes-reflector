@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/emberstack/kubernetes-reflector/internal/annotations"
+	"github.com/sorend/kubernetes-reflector/internal/annotations"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )

@@ -3,7 +3,7 @@ package mirror
 import (
 	"context"
 
-	"github.com/emberstack/kubernetes-reflector/internal/annotations"
+	"github.com/sorend/kubernetes-reflector/internal/annotations"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"

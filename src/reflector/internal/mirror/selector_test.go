@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/emberstack/kubernetes-reflector/internal/mirror"
+	"github.com/sorend/kubernetes-reflector/internal/mirror"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -69,7 +69,7 @@ var _ = Describe("LabelSelectorMatch", func() {
 
 	It("returns selector validation errors", func() {
 		Expect(mirror.GetLabelSelectorErrors("annotation", "env=prod")).To(BeEmpty())
-		errs := mirror.GetLabelSelectorErrors("reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces-selector", "=prod")
+		errs := mirror.GetLabelSelectorErrors("reflector.v2.sorend.github.com/reflection-allowed-namespaces-selector", "=prod")
 		Expect(errs).NotTo(BeEmpty())
 		Expect(errs[0]).To(ContainSubstring("reflection-allowed-namespaces-selector"))
 	})
