@@ -30,9 +30,9 @@ env:
   helm_chart_repository_protocol: "oci://"
 
   container_image: "kubernetes-reflector"
-  container_image_build_context: "."
+  container_image_build_context: "src/reflector"
   container_image_build_platforms: "linux/amd64,linux/arm/v7,linux/arm64"
-  container_image_build_dockerfile: "src/ES.Kubernetes.Reflector/Dockerfile"
+  container_image_build_dockerfile: "src/reflector/Dockerfile"
   container_image_repository_dockerhub: "emberstack"
   container_image_repository_ghcr: "ghcr.io/emberstack"
 
@@ -45,21 +45,14 @@ jobs:
     outputs:
       pathsFilter_src: ${{ steps.pathsFilter.outputs.src }}
       gitVersion_SemVer: ${{ steps.gitversion.outputs.GitVersion_SemVer }}
-      gitVersion_AssemblySemFileVer: ${{ steps.gitversion.outputs.GitVersion_AssemblySemFileVer }}
       build: ${{ steps.evaluate_build.outputs.result }}
       build_push: ${{ steps.evaluate_build_push.outputs.result }}
-      build_configuration: ${{ steps.evaluate_build_configuration.outputs.result }}
       release: ${{ steps.evaluate_release.outputs.result }}
     steps:
       - name: checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      - name: tools - dotnet - install
-        uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: "10.x"
 
       - name: tools - gitversion - install
         uses: gittools/actions/gitversion/setup@v4.7.0
@@ -80,17 +73,9 @@ jobs:
           base: ${{ github.ref }}
           filters: |
             src:
-              - '*.sln'
-              - '*.slnx'
-              - '*.props'
-              - 'src/**'
+              - 'src/reflector/**'
             build:
-              - '*.sln'
-              - '*.slnx'
-              - '*.props'
-              - 'src/**'
-              - 'tests/**'
-              - 'playground/**'
+              - 'src/reflector/**'
 
       - name: evaluate - build
         id: evaluate_build
@@ -104,18 +89,12 @@ jobs:
           RESULT: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'pull_request' && (steps.pathsFilter.outputs.src == 'true' || github.event.inputs.force_build == 'true') }}
         run: echo "result=$RESULT" >> $GITHUB_OUTPUT
 
-      - name: evaluate - build_configuration
-        id: evaluate_build_configuration
-        env:
-          RESULT: ${{ github.ref == 'refs/heads/main' && 'Release' || 'Debug' }}
-        run: echo "result=$RESULT" >> $GITHUB_OUTPUT
-
       - name: evaluate - release
         id: evaluate_release
         env:
           RESULT: ${{ github.ref == 'refs/heads/main' || github.event.inputs.force_release == 'true' }}
         run: echo "result=$RESULT" >> $GITHUB_OUTPUT
-      
+
 
   build:
     name: build
@@ -125,9 +104,7 @@ jobs:
     env:
       build: ${{ needs.discovery.outputs.build }}
       build_push: ${{ needs.discovery.outputs.build_push }}
-      build_configuration: ${{ needs.discovery.outputs.build_configuration }}
       gitVersion_SemVer: ${{ needs.discovery.outputs.gitVersion_SemVer }}
-      gitVersion_AssemblySemFileVer: ${{ needs.discovery.outputs.gitVersion_AssemblySemFileVer }}
     steps:
       - name: checkout
         uses: actions/checkout@v7
@@ -137,28 +114,16 @@ jobs:
           mkdir -p .artifacts/helm
           mkdir -p .artifacts/kubectl
 
-      - name: tools - dotnet - install
-        uses: actions/setup-dotnet@v6
+      - name: tools - go - install
+        uses: actions/setup-go@v5
         with:
-          dotnet-version: "10.x"
+          go-version-file: src/reflector/go.mod
 
-      - name: dotnet - restore
-        run: dotnet restore
+      - name: go - build
+        run: cd src/reflector && go build ./...
 
-      - name: dotnet - build
-        run: dotnet build --no-restore --configuration ${{ env.build_configuration }} /p:Version=${{ env.gitVersion_SemVer }} /p:AssemblyVersion=${{env.gitVersion_AssemblySemFileVer}} /p:NuGetVersion=${{env.gitVersion_SemVer}}
-
-      - name: dotnet - test
-        run: dotnet test --no-build --configuration ${{ env.build_configuration }} --verbosity normal
-
-      - name: tests - report
-        uses: dorny/test-reporter@v3
-        if: ${{ github.event.pull_request.head.repo.fork == false }}
-        with:
-          name: Test Results
-          path: .artifacts/TestResults/*.trx
-          reporter: dotnet-trx
-          fail-on-empty: "false"
+      - name: go - test
+        run: cd src/reflector && go test ./...
 
       - name: tools - helm - install
         uses: azure/setup-helm@v5
@@ -206,8 +171,6 @@ jobs:
         with:
           context: ${{ env.container_image_build_context }}
           file: ${{ env.container_image_build_dockerfile }}
-          build-args: |
-            BUILD_CONFIGURATION=${{ env.build_configuration }}
           push: ${{ env.build_push == 'true' }}
           provenance: false
           platforms: ${{ env.container_image_build_platforms }}
@@ -244,7 +207,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       gitVersion_SemVer: ${{ needs.discovery.outputs.gitVersion_SemVer }}
-      gitVersion_AssemblySemFileVer: ${{ needs.discovery.outputs.gitVersion_AssemblySemFileVer }}
     steps:
 
       - name: artifacts - helm - download
