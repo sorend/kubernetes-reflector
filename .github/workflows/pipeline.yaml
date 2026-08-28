@@ -1,283 +1,63 @@
-name: Pipeline
+name: CI
 
 on:
   push:
-    branches:
-      - "**" # Matches all branches
+    branches: ["**"]
   pull_request:
-    branches:
-      - "**" # Matches all branches
-
+    branches: ["**"]
   workflow_dispatch:
-    inputs:
-      force_build:
-        description: "Forces a build even if no changes are detected"
-        required: true
-        default: "false"
-      force_release:
-        description: "Forces a release even if no changes are detected"
-        required: true
-        default: "false"
 
 concurrency:
-  group: pipeline-${{ github.ref_name }}
+  group: ci-${{ github.ref_name }}
   cancel-in-progress: true
 
 env:
-  helm_chart: "reflector"
-  helm_chart_dir: "src/helm/reflector"
-  helm_chart_repository: "ghcr.io/emberstack/helm-charts"
-  helm_chart_repository_protocol: "oci://"
-
-  container_image: "kubernetes-reflector"
-  container_image_build_context: "src/reflector"
-  container_image_build_platforms: "linux/amd64,linux/arm/v7,linux/arm64"
-  container_image_build_dockerfile: "src/reflector/Dockerfile"
-  container_image_repository_dockerhub: "emberstack"
-  container_image_repository_ghcr: "ghcr.io/emberstack"
+  IMAGE: ghcr.io/sorend/kubernetes-reflector
 
 jobs:
-  discovery:
+  test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      pathsFilter_src: ${{ steps.pathsFilter.outputs.src }}
-      gitVersion_SemVer: ${{ steps.gitversion.outputs.GitVersion_SemVer }}
-      build: ${{ steps.evaluate_build.outputs.result }}
-      build_push: ${{ steps.evaluate_build_push.outputs.result }}
-      release: ${{ steps.evaluate_release.outputs.result }}
     steps:
-      - name: checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: tools - gitversion - install
-        uses: gittools/actions/gitversion/setup@v4.7.0
-        with:
-          versionSpec: "6.x"
-          preferLatestVersion: true
-
-      - name: gitversion - execute
-        id: gitversion
-        uses: gittools/actions/gitversion/execute@v4.7.0
-        with:
-          configFilePath: GitVersion.yaml
-
-      - name: tools - detect changes
-        id: pathsFilter
-        uses: dorny/paths-filter@v4
-        with:
-          base: ${{ github.ref }}
-          filters: |
-            src:
-              - 'src/reflector/**'
-            build:
-              - 'src/reflector/**'
-
-      - name: evaluate - build
-        id: evaluate_build
-        env:
-          RESULT: ${{ steps.pathsFilter.outputs.build == 'true' || github.event.inputs.force_build == 'true' || github.event.inputs.force_release == 'true' }}
-        run: echo "result=$RESULT" >> $GITHUB_OUTPUT
-
-      - name: evaluate - build_push
-        id: evaluate_build_push
-        env:
-          RESULT: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'pull_request' && (steps.pathsFilter.outputs.src == 'true' || github.event.inputs.force_build == 'true') }}
-        run: echo "result=$RESULT" >> $GITHUB_OUTPUT
-
-      - name: evaluate - release
-        id: evaluate_release
-        env:
-          RESULT: ${{ github.ref == 'refs/heads/main' || github.event.inputs.force_release == 'true' }}
-        run: echo "result=$RESULT" >> $GITHUB_OUTPUT
-
-
-  build:
-    name: build
-    if: ${{ needs.discovery.outputs.build == 'true' }}
-    needs: [discovery]
-    runs-on: ubuntu-latest
-    env:
-      build: ${{ needs.discovery.outputs.build }}
-      build_push: ${{ needs.discovery.outputs.build_push }}
-      gitVersion_SemVer: ${{ needs.discovery.outputs.gitVersion_SemVer }}
-    steps:
-      - name: checkout
-        uses: actions/checkout@v7
-
-      - name: artifacts - prepare directories
-        run: |
-          mkdir -p .artifacts/helm
-          mkdir -p .artifacts/kubectl
-
-      - name: tools - go - install
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version-file: src/reflector/go.mod
 
-      - name: go - build
-        run: cd src/reflector && go build ./...
-
-      - name: go - test
+      - name: go test
         run: cd src/reflector && go test ./...
 
-      - name: tools - helm - install
-        uses: azure/setup-helm@v5
-
-      - name: tools - helm - login - ghcr.io
-        if: ${{ env.build_push == 'true' }}
-        run: echo "${{ secrets.ES_GITHUB_PAT }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: tools - docker - login ghcr.io
-        if: ${{ env.build_push == 'true' }}
-        uses: docker/login-action@v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.ES_GITHUB_PAT }}
-
-      - name: tools - docker - login docker.io
-        if: ${{ env.build_push == 'true' }}
-        uses: docker/login-action@v4.6.0
-        with:
-          registry: docker.io
-          username: ${{ secrets.ES_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.ES_DOCKERHUB_PAT }}
-
-      - name: tools - docker - register QEMU
-        run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
-      - name: tools - docker - setup buildx
-        uses: docker/setup-buildx-action@v4
-        with:
-          driver: docker-container # REQUIRED for multi-platform builds
-
-      - name: helm - import README
-        run: cp README.md ${{ env.helm_chart_dir }}/README.md
-
-      - name: helm - package chart
-        run: helm package --destination .artifacts/helm --version ${{ env.gitVersion_SemVer }} --app-version ${{ env.gitVersion_SemVer }} ${{ env.helm_chart_dir }}
-
-      - name: helm - template chart
-        run: helm template --namespace kube-system ${{ env.helm_chart }} .artifacts/helm/${{ env.helm_chart }}-${{ env.gitVersion_SemVer }}.tgz > .artifacts/kubectl/${{ env.helm_chart }}.yaml
-
-      - name: docker - build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: ${{ env.container_image_build_context }}
-          file: ${{ env.container_image_build_dockerfile }}
-          push: ${{ env.build_push == 'true' }}
-          provenance: false
-          platforms: ${{ env.container_image_build_platforms }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.url=https://github.com/${{ github.repository }}
-            org.opencontainers.image.vendor=https://github.com/${{ github.repository_owner }}
-            org.opencontainers.image.version=${{ env.gitVersion_SemVer }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          tags: |
-            ${{ env.container_image_repository_dockerhub }}/${{ env.container_image }}:${{ env.gitVersion_SemVer }}
-            ${{ env.container_image_repository_ghcr }}/${{ env.container_image }}:${{ env.gitVersion_SemVer }}
-
-      - name: helm - push
-        if: ${{ env.build_push == 'true' }}
-        run: helm push .artifacts/helm/${{ env.helm_chart }}-${{ env.gitVersion_SemVer }}.tgz ${{ env.helm_chart_repository_protocol }}${{ env.helm_chart_repository }}
-
-      - name: artifacts - helm - upload
-        uses: actions/upload-artifact@v7
-        with:
-          name: artifacts-helm-${{env.gitVersion_SemVer}}
-          path: .artifacts/helm
-
-      - name: artifacts - kubectl - upload
-        uses: actions/upload-artifact@v7
-        with:
-          name: artifacts-kubectl-${{env.gitVersion_SemVer}}
-          path: .artifacts/kubectl
-
-  release:
-    name: release
-    if: ${{ needs.discovery.outputs.release == 'true' && github.ref == 'refs/heads/main' }}
-    needs: [discovery, build]
+  build:
+    needs: test
     runs-on: ubuntu-latest
-    env:
-      gitVersion_SemVer: ${{ needs.discovery.outputs.gitVersion_SemVer }}
+    permissions:
+      contents: read
+      packages: write
     steps:
+      - uses: actions/checkout@v4
 
-      - name: artifacts - helm - download
-        uses: actions/download-artifact@v8
-        with:
-          name: artifacts-helm-${{env.gitVersion_SemVer}}
-          path: .artifacts/helm
-
-      - name: artifacts - kubectl - download
-        uses: actions/download-artifact@v8
-        with:
-          name: artifacts-kubectl-${{env.gitVersion_SemVer}}
-          path: .artifacts/kubectl
-
-      - name: tools - helm - install
-        uses: azure/setup-helm@v5
-
-      - name: tools - helm - login - ghcr.io
-        run: echo "${{ secrets.ES_GITHUB_PAT }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: tools - oras - install
-        uses: oras-project/setup-oras@v2
-
-      - name: tools - oras - login - ghcr.io
-        run: echo "${{ secrets.ES_GITHUB_PAT }}" | oras login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: tools - docker - login ghcr.io
-        uses: docker/login-action@v4.6.0
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.ES_GITHUB_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: tools - docker - login docker.io
-        uses: docker/login-action@v4.6.0
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          registry: docker.io
-          username: ${{ secrets.ES_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.ES_DOCKERHUB_PAT }}
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: tools - docker - setup buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: docker - tag and push - latest
-        run: |
-          docker buildx imagetools create \
-            --tag ${{ env.container_image_repository_dockerhub }}/${{ env.container_image }}:latest \
-            --tag ${{ env.container_image_repository_ghcr }}/${{ env.container_image }}:latest \
-            --tag ${{ env.container_image_repository_dockerhub }}/${{ env.container_image }}:${{ env.gitVersion_SemVer }} \
-            --tag ${{ env.container_image_repository_ghcr }}/${{ env.container_image }}:${{ env.gitVersion_SemVer }} \
-            ${{ env.container_image_repository_ghcr }}/${{ env.container_image }}:${{ env.gitVersion_SemVer }}
-
-      - name: helm - push
-        run: helm push .artifacts/helm/${{ env.helm_chart }}-${{ env.gitVersion_SemVer }}.tgz ${{ env.helm_chart_repository_protocol }}${{ env.helm_chart_repository }}
-
-      - name: github - release - create
-        uses: softprops/action-gh-release@v3
+      - name: Build and push
+        uses: docker/build-push-action@v6
         with:
-          repository: ${{ github.repository }}
-          name: v${{ env.gitVersion_SemVer }}
-          tag_name: v${{ env.gitVersion_SemVer }}
-          body: The release process is automated.
-          generate_release_notes: true
-          token: ${{ secrets.ES_GITHUB_PAT }}
-          files: |
-            .artifacts/kubectl/${{ env.helm_chart }}.yaml
-
-      - name: github - repository-dispatch - release
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.ES_GITHUB_PAT }}
-          repository: emberstack/helm-charts
-          event-type: release
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+          context: src/reflector
+          file: src/reflector/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
