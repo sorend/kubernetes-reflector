@@ -3,12 +3,9 @@ WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /reflector ./cmd/reflector
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /reflector ./cmd/reflector
 
-FROM docker.io/library/alpine:3.21
-RUN addgroup -S app && adduser -S app -G app
-USER app
-WORKDIR /app
-COPY --from=builder /reflector /app/reflector
+FROM gcr.io/distroless/static:nonroot
+COPY --from=builder /reflector /reflector
 EXPOSE 8080
-ENTRYPOINT ["/app/reflector"]
+ENTRYPOINT ["/reflector"]
