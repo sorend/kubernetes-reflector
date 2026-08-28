@@ -25,7 +25,7 @@ cron:
 
 configuration:
   logging:
-    minimumLevel: Information
+    minimumLevel: info
   watcher:
     timeout: ""
     # Comma-separated list of namespace glob patterns to exclude from reflection processing.

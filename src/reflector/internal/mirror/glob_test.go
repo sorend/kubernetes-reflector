@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/emberstack/kubernetes-reflector/internal/mirror"
+	"github.com/sorend/kubernetes-reflector/internal/mirror"
 )
 
 var _ = Describe("GlobMatcher", func() {

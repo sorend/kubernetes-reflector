@@ -24,7 +24,7 @@ version: 0.1.0
 appVersion: 0.1.0
 
 
-icon: https://raw.githubusercontent.com/emberstack/kubernetes-reflector/main/assets/helm_icon.png
+icon: https://raw.githubusercontent.com/sorend/kubernetes-reflector/main/assets/helm_icon.png
 keywords:
 - reflector
 - controller
@@ -33,9 +33,8 @@ keywords:
 - configmaps
 - cert-manager
 - certificates
-home: https://github.com/emberstack/kubernetes-reflector
+home: https://github.com/sorend/kubernetes-reflector
 sources:
-- https://github.com/emberstack/kubernetes-reflector
+- https://github.com/sorend/kubernetes-reflector
 maintainers:
-- name: winromulus
-  email: helm-charts@emberstack.com
+- name: sorend

@@ -1,17 +1,15 @@
 # Reflector
 Reflector is a Kubernetes addon designed to monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
 
-[![Pipeline](https://github.com/emberstack/kubernetes-reflector/actions/workflows/pipeline.yaml/badge.svg)](https://github.com/emberstack/kubernetes-reflector/actions/workflows/pipeline.yaml)
-[![Release](https://img.shields.io/github/release/emberstack/kubernetes-reflector.svg?style=flat-square)](https://github.com/emberstack/kubernetes-reflector/releases/latest)
-[![Docker Image](https://img.shields.io/docker/image-size/emberstack/kubernetes-reflector/latest?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
-[![Docker Pulls](https://img.shields.io/docker/pulls/emberstack/kubernetes-reflector?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
-[![license](https://img.shields.io/github/license/emberstack/kubernetes-reflector.svg?style=flat-square)](LICENSE)
+[![Pipeline](https://github.com/sorend/kubernetes-reflector/actions/workflows/pipeline.yaml/badge.svg)](https://github.com/sorend/kubernetes-reflector/actions/workflows/pipeline.yaml)
+[![Release](https://img.shields.io/github/release/sorend/kubernetes-reflector.svg?style=flat-square)](https://github.com/sorend/kubernetes-reflector/releases/latest)
+[![license](https://img.shields.io/github/license/sorend/kubernetes-reflector.svg?style=flat-square)](LICENSE)
 
 
-> Supports `amd64`, `arm` and `arm64`
+> Supports `amd64` and `arm64`
 
 ## Support
-If you need help or found a bug, please feel free to open an Issue on GitHub (https://github.com/emberstack/kubernetes-reflector/issues).  
+If you need help or found a bug, please feel free to open an Issue on GitHub (https://github.com/sorend/kubernetes-reflector/issues).  
 
 ## Deployment
 
@@ -23,15 +21,10 @@ Reflector can be deployed either manually or using Helm (recommended).
 
 #### Deployment using Helm
 
-Use Helm to install the latest released chart:
+Clone the repository and install from the chart directory:
 ```shellsession
-$ helm upgrade --install reflector oci://ghcr.io/emberstack/helm-charts/reflector
-```
-or
-```shellsession
-$ helm repo add emberstack https://emberstack.github.io/helm-charts
-$ helm repo update
-$ helm upgrade --install reflector emberstack/reflector
+$ git clone https://github.com/sorend/kubernetes-reflector.git
+$ helm upgrade --install reflector ./kubernetes-reflector/src/helm/reflector
 ```
 
 You can customize the values of the helm deployment by using the following Values:
@@ -41,10 +34,10 @@ You can customize the values of the helm deployment by using the following Value
 | `nameOverride`                           | Overrides release name                           | `""`                                                                                             |
 | `namespaceOverride`                      | Overrides namespace                              | `""`                                                                                             |
 | `fullnameOverride`                       | Overrides release fullname                       | `""`                                                                                             |
-| `image.repository`                       | Container image repository                       | `emberstack/kubernetes-reflector` (also available: `ghcr.io/emberstack/kubernetes-reflector`)    |
+| `image.repository`                       | Container image repository                       | `ghcr.io/sorend/kubernetes-reflector`                                                            |
 | `image.tag`                              | Container image tag                              | `Same as chart version`                                                                          |
 | `image.pullPolicy`                       | Container image pull policy                      | `IfNotPresent`                                                                                   |
-| `configuration.logging.minimumLevel`     | Logging minimum level                            | `Information`                                                                                    |
+| `configuration.logging.minimumLevel`     | Logging minimum level (`debug`, `info`, `warn`, `error`) | `info`                                                                               |
 | `configuration.watcher.timeout`            | Maximum watcher lifetime in seconds                                                                                                                                                      | ``                                                                                               |
 | `configuration.watcher.excludedNamespaces` | Comma-separated list of namespace glob patterns to exclude from reflection processing. Supports `*` (any characters) and `?` (single character). Example: `"ephie-*,kube-system,*-temp"` | ``                                                                                               |
 | `configuration.kubernetes.skipTlsVerify`   | Skip TLS verify when connecting the the cluster                                                                                                                                          | `false`                                                                                          |
@@ -62,31 +55,32 @@ You can customize the values of the helm deployment by using the following Value
 | `tolerations`                            | Toleration labels for pod assignment             | `[]`                                                                                             |
 | `affinity`                               | Node affinity for pod assignment                 | `{}`                                                                                             |
 | `priorityClassName`                      | `priorityClassName` for pods                     | `""`                                                                                             |
-                                         
-> Find us on [Artifact Hub](https://artifacthub.io/packages/search?org=emberstack)
 
+#### Environment variables
 
-#### Manual deployment
-Each release (found on the [Releases](https://github.com/emberstack/kubernetes-reflector/releases) GitHub page) contains the manual deployment file (`reflector.yaml`).
+The following environment variables can also be set directly on the container:
 
-```shellsession
-$ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-reflector/releases/latest/download/reflector.yaml
-```
+| Variable                       | Description                              | Default  |
+| ------------------------------ | ---------------------------------------- | -------- |
+| `REFLECTOR_LOG_LEVEL`          | Logging level (`debug`,`info`,`warn`,`error`) | `info` |
+| `REFLECTOR_WATCHER_TIMEOUT`    | Maximum watcher lifetime in seconds      | `3600`   |
+| `REFLECTOR_EXCLUDED_NAMESPACES`| Comma-separated namespace glob patterns to exclude | `""` |
+| `REFLECTOR_SKIP_TLS_VERIFY`    | Skip TLS verification for the cluster    | `false`  |
 
 
 ## Usage
 
 ### 1. Annotate the source `secret` or `configmap`
   
-  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed: "true"` to the resource annotations to permit reflection to mirrors.
-  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. Note: If this annotation is omitted or is empty, all namespaces are allowed.
-  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces-selector: "<selector>"` to the resource annotations to permit reflection only to namespaces matching the given Kubernetes label selector (e.g. `env=production`, `team in (a,b)`). If both this and `reflection-allowed-namespaces` are set, a namespace matches if it satisfies either condition.
+  - Add `reflector.v2.sorend.github.com/reflection-allowed: "true"` to the resource annotations to permit reflection to mirrors.
+  - Add `reflector.v2.sorend.github.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. Note: If this annotation is omitted or is empty, all namespaces are allowed.
+  - Add `reflector.v2.sorend.github.com/reflection-allowed-namespaces-selector: "<selector>"` to the resource annotations to permit reflection only to namespaces matching the given Kubernetes label selector (e.g. `env=production`, `team in (a,b)`). If both this and `reflection-allowed-namespaces` are set, a namespace matches if it satisfies either condition.
 
   #### Automatic mirror creation:
   Reflector can create mirrors with the same name in other namespaces automatically. The following annotations control if and how the mirrors are created:
-  - Add `reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"` to the resource annotations to automatically create mirrors in other namespaces. Note: Requires `reflector.v1.k8s.emberstack.com/reflection-allowed` to be `true` since mirrors need to able to reflect the source.
-  - Add `reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "<list>"` to the resource annotations specify in which namespaces to automatically create mirrors. Note: If this annotation is omitted or is empty, all namespaces are allowed. Namespaces in this list will also be checked by `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` since mirrors need to be in namespaces from where reflection is permitted.
-  - Add `reflector.v1.k8s.emberstack.com/reflection-auto-namespaces-selector: "<selector>"` to the resource annotations to select namespaces for automatic mirrors using a Kubernetes label selector. If both this and `reflection-auto-namespaces` are set, a namespace matches if it satisfies either condition.
+  - Add `reflector.v2.sorend.github.com/reflection-auto-enabled: "true"` to the resource annotations to automatically create mirrors in other namespaces. Note: Requires `reflector.v2.sorend.github.com/reflection-allowed` to be `true` since mirrors need to able to reflect the source.
+  - Add `reflector.v2.sorend.github.com/reflection-auto-namespaces: "<list>"` to the resource annotations specify in which namespaces to automatically create mirrors. Note: If this annotation is omitted or is empty, all namespaces are allowed. Namespaces in this list will also be checked by `reflector.v2.sorend.github.com/reflection-allowed-namespaces` since mirrors need to be in namespaces from where reflection is permitted.
+  - Add `reflector.v2.sorend.github.com/reflection-auto-namespaces-selector: "<selector>"` to the resource annotations to select namespaces for automatic mirrors using a Kubernetes label selector. If both this and `reflection-auto-namespaces` are set, a namespace matches if it satisfies either condition.
 
   > Important: If the `source` is deleted, automatic mirrors are deleted. Also if either reflection or automirroring is turned off or the automatic mirror's namespace is no longer a valid match for the allowed namespaces, the automatic mirror is deleted.
 
@@ -99,9 +93,9 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   metadata:
     name: source-secret
     annotations:
-      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
-      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
-      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces-selector: "env=production"
+      reflector.v2.sorend.github.com/reflection-allowed: "true"
+      reflector.v2.sorend.github.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
+      reflector.v2.sorend.github.com/reflection-allowed-namespaces-selector: "env=production"
   data:
     ...
   ```
@@ -113,18 +107,18 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   metadata:
     name: source-config-map
     annotations:
-      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
-      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
-      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces-selector: "env=production"
+      reflector.v2.sorend.github.com/reflection-allowed: "true"
+      reflector.v2.sorend.github.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
+      reflector.v2.sorend.github.com/reflection-allowed-namespaces-selector: "env=production"
   data:
     ...
   ```
 
 ### 2. Annotate the mirror secret or configmap
 
-  - Add `reflector.v1.k8s.emberstack.com/reflects: "<source namespace>/<source name>"` to the mirror object. The value of the annotation is the full name of the source object in `namespace/name` format.
+  - Add `reflector.v2.sorend.github.com/reflects: "<source namespace>/<source name>"` to the mirror object. The value of the annotation is the full name of the source object in `namespace/name` format.
 
-  > Note: Add `reflector.v1.k8s.emberstack.com/reflected-version: ""` to the resource annotations when doing any manual changes to the mirror (for example when deploying with `helm` or re-applying the deployment script). This will reset the reflected version of the mirror.
+  > Note: Add `reflector.v2.sorend.github.com/reflected-version: ""` to the resource annotations when doing any manual changes to the mirror (for example when deploying with `helm` or re-applying the deployment script). This will reset the reflected version of the mirror.
   
   Example mirror secret:
    ```yaml
@@ -133,7 +127,7 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   metadata:
     name: mirror-secret
     annotations:
-      reflector.v1.k8s.emberstack.com/reflects: "default/source-secret"
+      reflector.v2.sorend.github.com/reflects: "default/source-secret"
   data:
     ...
   ```
@@ -145,7 +139,7 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   metadata:
     name: mirror-config-map
     annotations:
-      reflector.v1.k8s.emberstack.com/reflects: "default/source-config-map"
+      reflector.v2.sorend.github.com/reflects: "default/source-config-map"
   data:
     ...
   ```
@@ -171,12 +165,11 @@ kind: Certificate
 spec:
   secretTemplate:
     annotations:
-      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
-      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: ""
+      reflector.v2.sorend.github.com/reflection-allowed: "true"
+      reflector.v2.sorend.github.com/reflection-allowed-namespaces: ""
   ...
   ```
 
-=======
 > Since version 1.15 of cert-manager you can annotate `Ingress` to create secrets created from certificates for mirroring using `cert-manager.io/secret-template` annotation  (see https://github.com/cert-manager/cert-manager/pull/6839).
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -186,6 +179,7 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     cert-manager.io/secret-template: |
-      {"annotations": {"reflector.v1.k8s.emberstack.com/reflection-allowed": "true", "reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces": ""}}
+      {"annotations": {"reflector.v2.sorend.github.com/reflection-allowed": "true", "reflector.v2.sorend.github.com/reflection-allowed-namespaces": ""}}
   ...
 ```
+

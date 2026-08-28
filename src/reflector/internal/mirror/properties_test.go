@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/emberstack/kubernetes-reflector/internal/annotations"
-	"github.com/emberstack/kubernetes-reflector/internal/mirror"
+	"github.com/sorend/kubernetes-reflector/internal/annotations"
+	"github.com/sorend/kubernetes-reflector/internal/mirror"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

@@ -45,13 +45,13 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: ES_Serilog__MinimumLevel__Default
+            - name: REFLECTOR_LOG_LEVEL
               value: {{ .Values.configuration.logging.minimumLevel | quote }}
-            - name: ES_Reflector__Watcher__Timeout
+            - name: REFLECTOR_WATCHER_TIMEOUT
               value: {{ .Values.configuration.watcher.timeout | quote }}
-            - name: ES_Reflector__Watcher__ExcludedNamespaces
+            - name: REFLECTOR_EXCLUDED_NAMESPACES
               value: {{ .Values.configuration.watcher.excludedNamespaces | quote }}
-            - name: ES_Ignite__KubernetesClient__SkipTlsVerify
+            - name: REFLECTOR_SKIP_TLS_VERIFY
               value: {{ .Values.configuration.kubernetes.skipTlsVerify | quote }}
             {{- with .Values.extraEnv }}
               {{- toYaml . | nindent 12 }}
