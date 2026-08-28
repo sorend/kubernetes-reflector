@@ -1,11 +1,11 @@
-package glob
+package mirror
 
 import (
 	"regexp"
 	"strings"
 )
 
-func ParsePatterns(patterns string) []*regexp.Regexp {
+func ParseGlobPatterns(patterns string) []*regexp.Regexp {
 	if strings.TrimSpace(patterns) == "" {
 		return nil
 	}

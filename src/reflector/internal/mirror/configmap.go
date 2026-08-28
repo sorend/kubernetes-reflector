@@ -1,84 +1,45 @@
 package mirror
 
 import (
-	"context"
-
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-type ConfigMapOperations struct {
-	client kubernetes.Interface
-}
+type ConfigMapOps struct{}
 
-func NewConfigMapOperations(client kubernetes.Interface) *ConfigMapOperations {
-	return &ConfigMapOperations{client: client}
-}
-
-func (c *ConfigMapOperations) ListAllWithName(ctx context.Context, name string) ([]metav1.Object, error) {
-	list, err := c.client.CoreV1().ConfigMaps("").List(ctx, metav1.ListOptions{FieldSelector: "metadata.name=" + name})
-	if err != nil {
-		return nil, err
+func (ConfigMapOps) NewObject() *corev1.ConfigMap { return &corev1.ConfigMap{} }
+func (ConfigMapOps) NewList() client.ObjectList   { return &corev1.ConfigMapList{} }
+func (ConfigMapOps) ListItems(list client.ObjectList) []*corev1.ConfigMap {
+	l := list.(*corev1.ConfigMapList)
+	result := make([]*corev1.ConfigMap, len(l.Items))
+	for i := range l.Items {
+		result[i] = &l.Items[i]
 	}
-
-	result := make([]metav1.Object, 0, len(list.Items))
-	for i := range list.Items {
-		result = append(result, &list.Items[i])
+	return result
+}
+func (ConfigMapOps) Clone(src *corev1.ConfigMap) *corev1.ConfigMap {
+	data := make(map[string]string, len(src.Data))
+	for k, v := range src.Data {
+		data[k] = v
 	}
-	return result, nil
-}
-
-func (c *ConfigMapOperations) Get(ctx context.Context, ns, name string) (metav1.Object, error) {
-	return c.client.CoreV1().ConfigMaps(ns).Get(ctx, name, metav1.GetOptions{})
-}
-
-func (c *ConfigMapOperations) Create(ctx context.Context, obj metav1.Object, ns string) error {
-	configMap, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		return ErrUnexpectedObjectType("configmap create", obj)
+	bin := make(map[string][]byte, len(src.BinaryData))
+	for k, v := range src.BinaryData {
+		bin[k] = append([]byte(nil), v...)
 	}
-	_, err := c.client.CoreV1().ConfigMaps(ns).Create(ctx, configMap, metav1.CreateOptions{})
-	return err
+	return &corev1.ConfigMap{Data: data, BinaryData: bin}
 }
-
-func (c *ConfigMapOperations) Patch(ctx context.Context, ns, name string, patchData []byte) error {
-	_, err := c.client.CoreV1().ConfigMaps(ns).Patch(ctx, name, types.JSONPatchType, patchData, metav1.PatchOptions{})
-	return err
-}
-
-func (c *ConfigMapOperations) Delete(ctx context.Context, ns, name string) error {
-	return c.client.CoreV1().ConfigMaps(ns).Delete(ctx, name, metav1.DeleteOptions{})
-}
-
-func (c *ConfigMapOperations) Clone(src metav1.Object) (metav1.Object, error) {
-	configMap, ok := src.(*corev1.ConfigMap)
-	if !ok {
-		return nil, ErrUnexpectedObjectType("configmap clone", src)
+func (ConfigMapOps) CopyData(src, dst *corev1.ConfigMap) {
+	data := make(map[string]string, len(src.Data))
+	for k, v := range src.Data {
+		data[k] = v
 	}
-	return &corev1.ConfigMap{Data: cloneStringMap(configMap.Data), BinaryData: cloneByteMap(configMap.BinaryData)}, nil
-}
-
-func (c *ConfigMapOperations) DataPatchOps(src metav1.Object) []map[string]interface{} {
-	configMap, ok := src.(*corev1.ConfigMap)
-	if !ok {
-		return nil
+	bin := make(map[string][]byte, len(src.BinaryData))
+	for k, v := range src.BinaryData {
+		bin[k] = append([]byte(nil), v...)
 	}
-	return []map[string]interface{}{
-		{
-			"op":    "replace",
-			"path":  "/data",
-			"value": configMap.Data,
-		},
-		{
-			"op":    "replace",
-			"path":  "/binaryData",
-			"value": configMap.BinaryData,
-		},
-	}
+	dst.Data = data
+	dst.BinaryData = bin
 }
-
-func (c *ConfigMapOperations) ResourceType() string {
-	return "ConfigMap"
-}
+func (ConfigMapOps) TypeName() string                  { return "ConfigMap" }
+func (ConfigMapOps) Predicates() []predicate.Predicate { return nil }

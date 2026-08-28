@@ -67,7 +67,7 @@ securityContext:
 
 livenessProbe:
   httpGet:
-    path: /health/live
+    path: /healthz
     port: http
   timeoutSeconds: 10
   initialDelaySeconds: 5
@@ -75,7 +75,7 @@ livenessProbe:
   failureThreshold: 5
 readinessProbe:
   httpGet:
-    path: /health/ready
+    path: /readyz
     port: http
   timeoutSeconds: 10
   initialDelaySeconds: 5
@@ -83,7 +83,7 @@ readinessProbe:
   failureThreshold: 5
 startupProbe:
   httpGet:
-    path: /health/ready
+    path: /readyz
     port: http
   timeoutSeconds: 10
   initialDelaySeconds: 5
